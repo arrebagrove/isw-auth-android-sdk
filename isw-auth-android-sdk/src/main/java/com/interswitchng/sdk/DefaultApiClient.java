@@ -92,7 +92,7 @@ public class DefaultApiClient<S extends IswRequest, T extends IswResponse> {
             throw new APIConnectionException(String.format(
                     "IOException during API request to Interswitch (%s): %s "
                             + "Please check your internet connection and try again. If this problem persists,"
-                            + "you should check Stripe's service status at https://twitter.com/iswconnect,"
+                            + "you should check Interswitch's service status at https://twitter.com/iswconnect,"
                             + " or let us know at connect@interswitchng.com.",
                     apiBase, e.getMessage()), e);
         } catch (HttpClientErrorException e) {
