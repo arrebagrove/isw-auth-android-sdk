@@ -14,7 +14,6 @@ import com.interswitchng.sdk.model.IswResponse;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -37,6 +36,12 @@ public class DefaultApiClient<S extends IswRequest, T extends IswResponse> {
     protected HttpHeaders headers;
     private String apiBase;
 
+    public DefaultApiClient(String apiBase) {
+        setupAuthHeaders(null);
+        this.restTemplate = new RestTemplate();
+        this.apiBase = apiBase;
+    }
+
     public DefaultApiClient(String apiBase, AuthConfig authConfig) {
         Assert.hasText(apiBase, "'apiBase' cannot be empty");
         Assert.notNull(authConfig, "'authConfig' cannot be null");
@@ -53,13 +58,13 @@ public class DefaultApiClient<S extends IswRequest, T extends IswResponse> {
 
     private void setupAuthHeaders(AuthConfig authConfig) {
         this.headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Accept", "application/json");
-        headers.set("Authorization", authConfig.getAuthorization());
-        headers.set("Timestamp", Long.toString(authConfig.getTimestamp()));
-        headers.set("Nonce", authConfig.getNonce());
-        headers.set("Signature", authConfig.getSignature());
-        headers.set("SignatureMethod", authConfig.getCrypto().replace("-", ""));
+        if (authConfig != null) {
+            headers.set("Authorization", authConfig.getAuthorization());
+            headers.set("Timestamp", Long.toString(authConfig.getTimestamp()));
+            headers.set("Nonce", authConfig.getNonce());
+            headers.set("Signature", authConfig.getSignature());
+            headers.set("SignatureMethod", authConfig.getCrypto().replace("-", ""));
+        }
     }
 
     public void setHeader(String key, String value) {
@@ -71,7 +76,7 @@ public class DefaultApiClient<S extends IswRequest, T extends IswResponse> {
     }
 
     public ResponseEntity<T> process(S request, String apiPath, HttpMethod method, Map<String, String> params, Class<T> responseClass) throws APIConnectionException, InvalidRequestException, AuthenticationException, APIException, AuthorisationException {
-        HttpEntity<S> req = new HttpEntity<S>(request, headers);
+        HttpEntity<S> req = new HttpEntity<>(request, headers);
         String requestId = null;
         if (request != null && request.getRequestId() != null) {
             requestId = request.getRequestId();
@@ -111,19 +116,21 @@ public class DefaultApiClient<S extends IswRequest, T extends IswResponse> {
                 } catch (IOException ioe) {
 
                 }
+            } else {
+                message = e.getLocalizedMessage();
             }
             int code = e.getStatusCode().value();
             switch (code) {
                 case 400:
-                    throw new InvalidRequestException(e.getLocalizedMessage(), message, requestId, null);
+                    throw new InvalidRequestException(message, message, requestId, null);
                 case 404:
-                    throw new InvalidRequestException(e.getLocalizedMessage(), message, requestId, null);
+                    throw new InvalidRequestException(message, message, requestId, null);
                 case 401:
-                    throw new AuthenticationException(e.getLocalizedMessage(), requestId);
+                    throw new AuthenticationException(message, requestId);
                 case 403:
-                    throw new AuthorisationException(e.getLocalizedMessage(), requestId);
+                    throw new AuthorisationException(message, requestId);
                 default:
-                    throw new APIException(e.getLocalizedMessage(), requestId, null);
+                    throw new APIException(message, requestId, null);
             }
         } catch (RestClientException e) {
             throw new InvalidRequestException(e.getLocalizedMessage(), "", requestId, null);
